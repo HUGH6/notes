@@ -356,3 +356,174 @@ func appendInt(x []int, y ...int) []int {
 }
 ```
 
+## map
+
+map是一个无序的key/value对的集合，其中所有的key都是不同的。通过给定的key，可以在常数时间复杂度内检索、更新或删除对应的value。
+
+golang中，一个map就是一个哈希表的引用，map类型可以写为map[K]V，其中K和V分别对应key和value。
+
+map中所有的key都是相同的类型，所有的value也是相同类型，但是key和value可以是不同类型。
+
+map中的key必须是支持`==`比较运算符的数据类型，map可以通过测试key是否相等来判断是否已经存在。
+
+**创建map**
+
+内置的make函数可以创建一个map：
+
+```go
+m := make(map[string]int)
+```
+
+还可以用map字面值的方式创建map，这种方式可以指定一些初始的key/value：
+
+```go
+m := map[string]int{
+    "a": 1,
+    "b": 2,
+}
+```
+
+相当于：
+
+```go
+m := make(map[string]int)
+m["a"] = 1
+m["b"] = 2
+```
+
+如果不指定初始的key/value，那么创建的是空map：
+
+```go
+m := map[string]int
+```
+
+**访问元素**
+
+map中的元素可以通过key对应的下标语法来访问：
+
+```go
+m["a"] = 3
+fmt.Println(m["a"])
+```
+
+**删除元素**
+
+内置函数delete可以删除元素：
+
+```go
+delete(m, "a")
+```
+
+即使对应元素不在map中也没关系，这些操作是安全的。
+
+**访问不存在元素返回零值**
+
+如果一个查找失败将返回value类型对应的零值。
+
+而且`x += y`和 `x++`等简短赋值语法也可以用在map上。
+
+但有时可能需要判断一个元素是否真的存在map中，可以通过如下方式：
+
+```go
+key, ok := m["a"]
+if !ok {/*... */}
+```
+
+经常可以看到这两个被结合起来使用：
+
+```go
+if key, ok := m["a"]; !ok {
+	/*...*/
+}
+```
+
+**禁止对元素取地址**
+
+但map中的元素并不是一个变量，因此不能对它们进行取地址操作：
+
+```go
+_ = &m["a"] // compile error
+```
+
+禁止取址的原有是map可能随着元素数量的增长而重新分配更大的空间，从而导致原先的地址无效。
+
+**遍历map中的key/value**
+
+可以使用range风格的for循环遍历map中的key/value：
+
+```go
+for key, value := range m {
+	fmt.Printf("%s\t%d\n", key, value)
+}
+```
+
+map的迭代顺序是不确定的，并且不同的哈希函数可能导致不同的遍历顺序。在实践中，遍历的顺序是随机的，每次遍历的顺序都不相同。
+
+如果想要按顺序遍历key/value，需要我们手动对key进行排序：
+
+```go
+import "sort"
+
+var keys []string
+for key := range m {
+    keys = append(keys, key)
+}
+sort.Strings(keys)
+for _, key := range keys {
+    fmt.Printf("%s\t%d\n", key, m[key])
+}
+```
+
+**map的零值是nil**
+
+map类型的零值是nil，也即没有引用任何哈希表。
+
+```go
+var m map[string]int
+fmt.Println(m == nil) // true
+fmt.Println(len(m) == 0) // true
+```
+
+map上的大部分操作，包括查找、删除、len和range循环都可以安全地工作在nil值的map上，它们的行为和空的map一致。
+
+但是向一个nil的map存入元素将导致panic异常。在向map存入数据前必须先创建一个map。
+
+**map不能判等**
+
+和slice一样，map不能判等，唯一的例外是和nil进行比较。
+
+要判断两个map好似否包含同样的key和value，必须通过一个循环实现：
+
+```go
+func equal(x, y map[string]int) bool {
+    if len(x) != len(y) {
+        return false
+    }
+    for k, xv := range x {
+        if yv, ok := y[k]; !ok || yv != xv {
+            return false
+        }
+    }
+    return true
+}
+```
+
+**用map时下set**
+
+golang中并没有set类型，但map中的key也是不相同的，可以用map来实现set的功能。
+
+**map的key必须是可比较类型**
+
+map的key必须是可比较类型，但有时我们需要一个map或者set的key是slice这类不能比较的类型，一般这种情况可以通过两个步骤绕过此项限制：
+
+* 定义一个辅助函数k将slice转为string类型的key，确保只有x和y相等时，k(x)==k(y)才成立。
+* 创建一个key为string类型的map，每次对map操作时先用辅助函数k将slice进行转换。
+
+**map的value类型也可以是聚合类型**
+
+map的value也可以是聚合类型，比如一个map或slice等。
+
+```go
+// 用来表示一个图
+var gragh = make(map[string]map[string]bool)
+```
